@@ -7,6 +7,5 @@ class EMG extends EventEmitter
 
   newData: (raw)=>
     @emit 'data', raw
-  
 
 module.exports = EMG

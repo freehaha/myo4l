@@ -2,8 +2,9 @@ noble = require('noble')
 constants = require('./constants')
 command = require('./command')
 async = require('async')
-IMU = require('./imu_stream')
-EMG = require('./emg_stream')
+Imu = require('./imu_stream')
+Emg = require('./emg_stream')
+Pose = require('./pose_stream')
 
 class Myo
   constructor: (@devName)->
@@ -12,8 +13,9 @@ class Myo
     @services = {}
     @chars = {}
     @fVersion = null
-    @imuStream = new IMU()
-    @emgStream = new EMG()
+    @imuStream = new Imu()
+    @emgStream = new Emg()
+    @poseStream = new Pose()
     
   onConnect: =>
     # do a discovery first to cache possible service and chars
@@ -131,7 +133,7 @@ class Myo
           (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, @emgStream, cb)
           (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)
           (cb) => @setNotification(constants.FV_SERVICE_UUID, constants.FV_DATA_CHAR_UUID, true, false, null, cb)
-          (cb) => @setNotification(constants.CLASSIFIER_SERVICE_UUID, constants.CLASSIFIER_EVENT_CHAR_UUID, true, true, null, cb)
+          (cb) => @setNotification(constants.CLASSIFIER_SERVICE_UUID, constants.CLASSIFIER_EVENT_CHAR_UUID, true, true, @poseStream, cb)
         ], (err)=>
           if err
             console.error 'failed to set notifications'
