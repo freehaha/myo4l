@@ -25,71 +25,106 @@ verifyClient = (info, cb)->
 getTimestamp = ->
   new Date().getTime().toString()
 
+commands = {
+  'request_rssi': (ws, cmd)->
+    m.requestRssi()
+  'set_stream_emg': (ws, cmd)->
+    m.setStreamEmg(cmd.type)
+  'set_locking_policy': (ws, cmd)->
+    m.setLockingPolicy(cmd.type)
+  'unlock': (ws, cmd)->
+    m.unlock(cmd.type)
+  'lock': (ws, cmd)->
+    m.lock()
+  'vibrate': (ws, cmd)->
+    m.vibrate cmd.type
+}
+
+sendEvent = (ws, type, data)->
+  data.type = type
+  data.timestamp = getTimestamp()
+  ws.send JSON.stringify [
+    'event'
+    data
+  ]
+
 m.on 'connected', ->
   wss.on 'connection', (ws)->
     ws.on 'message', (message)->
-      console.log "receive", message
+      cmd = JSON.parse(message)
+      if cmd[0] is 'command' and cmd[1].command of commands
+        console.log "command", cmd
+        commands[cmd[1].command](ws, cmd[1])
+    if m.connected
+      sendEvent(ws, 'connected', {
+        myo: 0
+        version: m.version
+      })
+    else
+      m.once 'connected', ->
+        sendEvent(ws, 'connected', {
+          myo: 0
+          version: m.version
+        })
 
     sendImu = (data)->
-      ws.send JSON.stringify [
-        'event'
-        {
-          type: 'orientation'
-          timestamp: getTimestamp()
-          myo: 0
-          orientation: new Quat(data[0])
-          accelerometer: new Vector3(data[1], Vector3.ACCEL)
-          gyroscope: new Vector3(data[2], Vector3.GYRO)
-        }
-      ]
+      sendEvent(ws, 'orientation', {
+        myo: 0
+        orientation: new Quat(data[0])
+        accelerometer: new Vector3(data[1], Vector3.ACCEL)
+        gyroscope: new Vector3(data[2], Vector3.GYRO)
+      })
     sendPose = (pose)->
-      ws.send JSON.stringify [
-        'event'
-        {
-          type: 'pose'
-          timestamp: getTimestamp()
-          myo: 0
-          pose: new Pose(pose).toString()
-        }
-      ]
-      #
+      sendEvent(ws, 'pose', {
+        myo: 0
+        pose: new Pose(pose).toString()
+      })
     sendArm = (arm)->
       if arm[0] != Arm.Arm.UNKNOWN
         arm = new Arm(arm)
-        ws.send JSON.stringify [
-          'event'
-          {
-            type: 'arm_synced'
-            timestamp: getTimestamp()
-            myo: 0
-            arm: arm.armString()
-            x_direction: arm.xdirString()
-          }
-        ]
+        sendEvent ws, 'arm_synced', {
+          myo: 0
+          arm: arm.armString()
+          x_direction: arm.xdirString()
+        }
       else
-        ws.send JSON.stringify [
-          'event'
-          {
-            type: 'arm_unsynced'
-            timestamp: getTimestamp()
-            myo: 0
-          }
-        ]
+        sendEvent ws, 'arm_unsynced', {
+          myo: 0
+        }
+    sendEmg = (data)->
+      emg = [
+        data.readInt8(0)
+        data.readInt8(1)
+        data.readInt8(2)
+        data.readInt8(3)
+        data.readInt8(4)
+        data.readInt8(5)
+        data.readInt8(6)
+        data.readInt8(7)
+      ]
+      sendEvent ws, 'emg', {
+        myo: 0
+        emg: emg
+      }
+
+    # set reporters
     m.poseStream.addListener 'pose', sendPose
     m.poseStream.addListener 'arm', sendArm
     m.imuStream.addListener 'data', sendImu
+    m.emgStream.addListener 'data', sendEmg
     ws.on 'close', ->
+      # cleanup
+      m.emgStream.removeListener 'data', sendEmg
       m.imuStream.removeListener 'data', sendImu
       m.poseStream.removeListener 'pose', sendPose
+      m.poseStream.removeListener 'arm', sendArm
 
 m.poseStream.on 'pose', (pose)->
   console.log 'pose', pose
 
-m.poseStream.on 'arm', (arm)->
-  console.log arm[0], arm[1]
-
 process.on 'SIGINT', ->
   wss.close()
+  console.log 'shutting down..'
   if m.connected
     m.disconnect()
   else

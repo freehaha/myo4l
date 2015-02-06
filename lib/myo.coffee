@@ -7,6 +7,9 @@ Emg = require('./emg_stream')
 Pose = require('./pose_stream')
 EventEmitter = require('events').EventEmitter
 
+LOCKING_NONE = 0
+LOCKING_STANDARD = 1
+
 class Myo extends EventEmitter
   constructor: (@devName)->
     super
@@ -18,6 +21,9 @@ class Myo extends EventEmitter
     @imuStream = new Imu()
     @emgStream = new Emg()
     @poseStream = new Pose()
+    @imuMode = command.imu.ENABLE
+    @cfyMode = command.classifier.ENABLE
+    @emgMode = command.emg.DISABLE
     
   onConnect: =>
     # do a discovery first to cache possible service and chars
@@ -25,7 +31,7 @@ class Myo extends EventEmitter
       @readNecessaryInfo()
 
   onRssiUpdate: (rssi)=>
-    console.log rssi
+    @emit 'rssi', rssi
 
   onDisconnect: =>
     @connected = false
@@ -117,10 +123,73 @@ class Myo extends EventEmitter
   writeControlCommand: (command, cb)->
     @getChar constants.CONTROL_SERVICE_UUID, constants.COMMAND_CHAR_UUID, (err, char)=>
       char.write command, false, (err)->
+        return unless cb
         cb err
 
-  setMode: (emg, imu, classifier)->
-    #
+  _vibDuration: {
+    'short': 1
+    'medium': 2
+    'long': 3
+  }
+
+  vibrate: (duration)->
+    if duration not of @_vibDuration
+      return
+    @writeControlCommand command.getVibrateCommand(@_vibDuration[duration])
+
+  requestRssi: ->
+    @dev.updateRssi()
+
+  _unlockType: {
+    'timed': command.unlock.TIMED
+    'hold': command.unlock.HOLD
+  }
+  unlock: (type)->
+    if type not of @_unlockType
+      return
+    @writeControlCommand command.getUnlockCommand(@_unlockType[type])
+
+  lock: ->
+    @poseStream.lock()
+    @emit 'locked'
+
+  _lockingPolicy: {
+    'none': LOCKING_NONE
+    'standard': LOCKING_STANDARD
+  }
+
+  setLockingPolicy: (type)->
+    if type not of @_lockingPolicy
+      return
+    lockingPolicy = @_lockingPolicy[type]
+    @poseStream.setLockingPolicy lockPolicy
+    @emit 'locking_policy_ack', 'success'
+
+  getLockingPolicy: ->
+    @poseStream.lockingPolicy
+
+  setMode: (emg, imu, classifier, cb)->
+    @emgMode = emg
+    @imuMode = imu
+    @cfyMode = classifier
+    @writeControlCommand command.getSetModeCommand(
+      @emgMode,
+      @imuMode,
+      @cfyMode,
+    ), cb
+
+  setStreamEmg: (enable)->
+    if enable is 'enabled'
+      enable = command.emg.STREAM
+    else
+      enable = command.emg.DISABLE
+
+    @setMode enable, @imuMode, @cfyMode, (err)=>
+      if err
+        @emit 'set_stream_emg_ack', 'fail'
+      else
+        @emit 'set_stream_emg_ack', 'success'
+
   readFrimwareVersion: ->
     @getChar constants.CONTROL_SERVICE_UUID, constants.FIRMWARE_VERSION_CHAR_UUID, (err, c) =>
       c.read (err, version) =>
@@ -128,9 +197,11 @@ class Myo extends EventEmitter
         min = version.readUInt16LE(2)
         pat = version.readUInt16LE(4)
         hrd = version.readUInt16LE(6)
-        @fVersion = "#{maj}.#{min}.#{pat}"
-        console.log "version: #{@fVersion} hardware: #{hrd}"
+        fVersion = "#{maj}.#{min}.#{pat}"
+        @version = [maj, min, pat, hrd]
+        console.log "version: #{fVersion} hardware: #{hrd}"
         @connected = true
+        @emit 'connected'
         async.parallel [
           (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, @emgStream, cb)
           (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)
@@ -142,15 +213,12 @@ class Myo extends EventEmitter
             console.error err
             return
           # set mode
-          @writeControlCommand command.getSetModeCommand(
-            command.emg.DISABLE,
-            command.imu.ENABLE,
-            command.classifier.ENABLE,
-          ), (err)=>
+          @setMode command.emg.DISABLE, command.imu.ENABLE, command.classifier.ENABLE, (err)=>
             if err
               console.error "failed to write init control command", err
               return
             console.log "initialized"
+            @vibrate('short')
             @emit 'connected'
 
   readNecessaryInfo: ->
