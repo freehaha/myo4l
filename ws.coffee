@@ -71,8 +71,8 @@ m.on 'connected', ->
       sendEvent(ws, 'orientation', {
         myo: 0
         orientation: new Quat(data[0])
-        accelerometer: new Vector3(data[1], Vector3.ACCEL)
-        gyroscope: new Vector3(data[2], Vector3.GYRO)
+        accelerometer: Vector3.parse(data[1], Vector3.ACCEL)
+        gyroscope: Vector3.parse(data[2], Vector3.GYRO)
       })
     sendPose = (pose)->
       sendEvent(ws, 'pose', {
@@ -118,9 +118,6 @@ m.on 'connected', ->
       m.imuStream.removeListener 'data', sendImu
       m.poseStream.removeListener 'pose', sendPose
       m.poseStream.removeListener 'arm', sendArm
-
-m.poseStream.on 'pose', (pose)->
-  console.log 'pose', pose
 
 process.on 'SIGINT', ->
   wss.close()
