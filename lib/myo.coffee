@@ -201,7 +201,6 @@ class Myo extends EventEmitter
         @version = [maj, min, pat, hrd]
         console.log "version: #{fVersion} hardware: #{hrd}"
         @connected = true
-        @emit 'connected'
         async.parallel [
           (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, @emgStream, cb)
           (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)

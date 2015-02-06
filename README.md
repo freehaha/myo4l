@@ -33,7 +33,8 @@ implementation so feel free to fire bug reports or send PRs.
 
 ## API
 
-An example to use the library without WS interface can be found in the example folder.
+A simple example to use the library without WS interface can be found in the example folder but you can find almost
+all possible usage in `ws.coffee` so it'd be a good place to dig into.
 
 # Disclaimer
 
