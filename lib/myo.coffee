@@ -3,6 +3,7 @@ constants = require('./constants')
 command = require('./command')
 async = require('async')
 IMU = require('./imu_stream')
+EMG = require('./emg_stream')
 
 class Myo
   constructor: (@devName)->
@@ -12,6 +13,7 @@ class Myo
     @chars = {}
     @fVersion = null
     @imuStream = new IMU()
+    @emgStream = new EMG()
     
   onConnect: =>
     # do a discovery first to cache possible service and chars
@@ -126,7 +128,7 @@ class Myo
         console.log "version: #{@fVersion} hardware: #{hrd}"
         @connected = true
         async.parallel [
-          (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, null, cb)
+          (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, @emgStream, cb)
           (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)
           (cb) => @setNotification(constants.FV_SERVICE_UUID, constants.FV_DATA_CHAR_UUID, true, false, null, cb)
           (cb) => @setNotification(constants.CLASSIFIER_SERVICE_UUID, constants.CLASSIFIER_EVENT_CHAR_UUID, true, true, null, cb)
