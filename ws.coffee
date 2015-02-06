@@ -7,7 +7,7 @@ Arm = require('./lib/arm')
 express = require('express')
 http = require('http')
 
-m = new Myo('FreeMyo')
+m = new Myo(process.argv[2] || 'Myo')
 m.connect()
 
 app = express()
