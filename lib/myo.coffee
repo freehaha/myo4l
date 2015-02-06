@@ -14,7 +14,9 @@ class Myo
     @imuStream = new IMU()
     
   onConnect: =>
-    @readNecessaryInfo()
+    # do a discovery first to cache possible service and chars
+    @_discovery =>
+      @readNecessaryInfo()
 
   onRssiUpdate: (rssi)=>
     console.log rssi
@@ -26,10 +28,23 @@ class Myo
     if @connected
       @dev.disconnect()
 
+  _discovery: (cb)->
+    @dev.discoverAllServicesAndCharacteristics (err, ss, cs) =>
+      for s in ss
+        @services[s.uuid] = s
+      for c in cs
+        if c._serviceUuid not of @chars
+          @chars[c._serviceUuid] = {}
+        @chars[c._serviceUuid][c.uuid] = c
+
+      console.log "done discovery, found #{ss.length} services, #{cs.length} characteristics"
+      process.nextTick ->
+        cb(err)
   getChar: (suid, cuid, cb)->
     if suid of @chars
       if cuid of @chars[suid]
-        return @chars[suid][cuid]
+        cb null, @chars[suid][cuid]
+        return
     else
       @chars[suid] = {}
 
@@ -60,6 +75,7 @@ class Myo
       cb(null, services[0])
 
   setNotification: (suid, cuid, enable, indicate, stream, cb)->
+    # maybe do this using handles, should be faster
     val = 0x0000
     if enable
       if indicate
@@ -100,58 +116,40 @@ class Myo
   setMode: (emg, imu, classifier)->
     #
   readFrimwareVersion: ->
-    @getService constants.CONTROL_SERVICE_UUID, (err, s)=>
-      if err
-        console.error err
-        return
-
-      console.log 'getting firmware version...'
-      s.discoverCharacteristics [constants.FIRMWARE_VERSION_CHAR_UUID], (err, chars) =>
-        unless not err and chars and chars.length > 0
-          console.error 'failed to get firmware version'
+    @getChar constants.CONTROL_SERVICE_UUID, constants.FIRMWARE_VERSION_CHAR_UUID, (err, c) =>
+      c.read (err, version) =>
+        maj = version.readUInt16LE(0)
+        min = version.readUInt16LE(2)
+        pat = version.readUInt16LE(4)
+        hrd = version.readUInt16LE(6)
+        @fVersion = "#{maj}.#{min}.#{pat}"
+        console.log "version: #{@fVersion} hardware: #{hrd}"
+        @connected = true
+        async.parallel [
+          (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, null, cb)
+          (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)
+          (cb) => @setNotification(constants.FV_SERVICE_UUID, constants.FV_DATA_CHAR_UUID, true, false, null, cb)
+          (cb) => @setNotification(constants.CLASSIFIER_SERVICE_UUID, constants.CLASSIFIER_EVENT_CHAR_UUID, true, true, null, cb)
+        ], (err)=>
           if err
+            console.error 'failed to set notifications'
             console.error err
-          return
-        chars[0].read (err, version) =>
-          maj = version.readUInt16LE(0)
-          min = version.readUInt16LE(2)
-          pat = version.readUInt16LE(4)
-          hrd = version.readUInt16LE(6)
-          @fVersion = "#{maj}.#{min}.#{pat}"
-          console.log "version: #{@fVersion} hardware: #{hrd}"
-          @connected = true
-          #@listServices()
-          # don't do parallel here becaue noble can't handle the interleved requests
-          async.series [
-            (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, null, cb)
-            (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)
-            (cb) => @setNotification(constants.FV_SERVICE_UUID, constants.FV_DATA_CHAR_UUID, true, false, null, cb)
-            (cb) => @setNotification(constants.CLASSIFIER_SERVICE_UUID, constants.CLASSIFIER_EVENT_CHAR_UUID, true, true, null, cb)
-          ], (err)=>
+            return
+          # set mode
+          @writeControlCommand command.getSetModeCommand(
+            command.emg.DISABLE,
+            command.imu.ENABLE,
+            command.classifier.ENABLE,
+          ), (err)=>
             if err
-              console.error 'failed to set notifications'
-              console.error err
+              console.error "failed to write init control command", err
               return
-            # set mode
-            @writeControlCommand command.getSetModeCommand(
-              command.emg.DISABLE,
-              command.imu.ENABLE,
-              command.classifier.ENABLE,
-            ), (err)=>
-              if err
-                console.error "failed to write init control command", err
-                return
-              console.log "initialized"
-              @activateListeners()
+            console.log "initialized"
+            @activateListeners()
 
   activateListeners: ->
     #@getChar(constants.)
-
-  listServices: ->
-    @dev.discoverAllServicesAndCharacteristics (err, services, chars)->
-      for c in chars
-        console.log c._serviceUuid, c.uuid
-
+    
   readNecessaryInfo: ->
     @readFrimwareVersion()
     #@setNotifications()
