@@ -5,9 +5,11 @@ async = require('async')
 Imu = require('./imu_stream')
 Emg = require('./emg_stream')
 Pose = require('./pose_stream')
+EventEmitter = require('events').EventEmitter
 
-class Myo
+class Myo extends EventEmitter
   constructor: (@devName)->
+    super
     @dev = null
     @connected = false
     @services = {}
@@ -149,11 +151,8 @@ class Myo
               console.error "failed to write init control command", err
               return
             console.log "initialized"
-            @activateListeners()
+            @emit 'connected'
 
-  activateListeners: ->
-    #@getChar(constants.)
-    
   readNecessaryInfo: ->
     @readFrimwareVersion()
     #@setNotifications()

@@ -1,28 +1,6 @@
 EventEmitter = require('events').EventEmitter
 
 class Pose extends EventEmitter
-  Arm: {
-    UNKNOWN: 0
-    RIGHT: 1
-    LEFT: 2
-  }
-
-  XDir: {
-    UNKNOWN: 0
-    X_TOWARD_WRIST: 1
-    X_TOWARD_ELBOW: 2
-  }
-
-  Pose: {
-    REST: 0
-    FIST: 1
-    WAVE_IN: 2
-    WAVE_OUT: 3
-    FINGER_SPREAD: 4
-    THUMB_TO_PINKY: 5
-    UNKNOWN: 255
-  }
-
   constructor: (opt)->
     super
 
