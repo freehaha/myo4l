@@ -1,9 +1,10 @@
-Myo = require('./lib/myo')
-Quat = require('./lib/quaternion')
-Vector3 = require('./lib/vector3')
+myo = require('./')
+Myo = myo.Myo
+Quat = myo.Quaternion
+Vector3 = myo.Vector3
 WS = require('ws').Server
-Pose = require('./lib/pose')
-Arm = require('./lib/arm')
+Pose = myo.Pose
+Arm = myo.Arm
 express = require('express')
 http = require('http')
 

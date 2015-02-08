@@ -24,7 +24,7 @@ class Myo extends EventEmitter
     @imuMode = command.imu.ENABLE
     @cfyMode = command.classifier.ENABLE
     @emgMode = command.emg.DISABLE
-    
+
   onConnect: =>
     # do a discovery first to cache possible service and chars
     @_discovery =>
@@ -67,7 +67,7 @@ class Myo extends EventEmitter
       unless ss and cs and ss.length and cs.length
         cb new Error("charactistic not found"), null
         return
-      
+
       @chars[suid][cuid] = cs[0]
       cb null, cs[0]
 
@@ -147,6 +147,7 @@ class Myo extends EventEmitter
   unlock: (type)->
     if type not of @_unlockType
       return
+    #@poseStream.unlock(@_unlockType[type])
     @writeControlCommand command.getUnlockCommand(@_unlockType[type])
 
   lock: ->
@@ -162,7 +163,7 @@ class Myo extends EventEmitter
     if type not of @_lockingPolicy
       return
     lockingPolicy = @_lockingPolicy[type]
-    @poseStream.setLockingPolicy lockPolicy
+    @poseStream.setLockingPolicy lockingPolicy
     @emit 'locking_policy_ack', 'success'
 
   getLockingPolicy: ->
@@ -230,7 +231,7 @@ class Myo extends EventEmitter
     @dev.on 'disconnect', @onDisconnect
     @dev.on 'rssiUpdate', @onRssiUpdate
     @dev.connect()
-  
+
 
   connect: ->
     noble.on 'discover', (peri) =>

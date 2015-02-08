@@ -7,9 +7,13 @@ class Pose extends EventEmitter
   constructor: (opt)->
     super
     @lockingPolicy = opt?.policy || 0
+    @locked = true
 
   setLockingPolicy: (@lockingPolicy)->
     #
+  lock: ->
+    @_locked = true
+    @emit 'locked'
 
   newData: (raw)=>
     type = raw.readUInt8(0)
@@ -23,8 +27,10 @@ class Pose extends EventEmitter
       #TODO: deal with policy
       @emit 'pose', val
     else if type == 4
+      @_locked = false
       @emit 'unlocked'
     else if type == 5
+      @_locked = true
       @emit 'locked'
     else
       @emit 'error', new Error('unknown classifier: ' + type)
