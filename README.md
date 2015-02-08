@@ -18,13 +18,6 @@ in your project root or in `node_modules/myo4l`:
 
 Otherwise you'll have to run your scripts as root all the time.
 
-*IMPORTANT NOTE*
-I believe there is currently a bug in noble that makes the callback of reading
-descriptors fire more than once. I'm sending a PR to it. Hopefully it will be
-merged soon, but in the mean time you can just patch it yourself by replacing
-`this.on('valueRead')` and `this.on('valueWrite')` with `this.once` in
-`noble/lib/descriptor.js`
-
 # How to use
 
 ## Websocket Interface
