@@ -1,5 +1,6 @@
-var Myo = require('..');
-var Pose = require('../lib/pose');
+var myo = require('..')
+var Myo = myo.Myo;
+var Pose = myo.Pose;
 var MYO_NAME = 'FreeMyo';
 var m = new Myo(MYO_NAME);
 
