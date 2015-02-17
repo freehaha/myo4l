@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "coffee -c *.coffee && coffee -c lib/*.coffee"
+    "build": "coffee -c *.coffee && coffee -c lib/*.coffee"
   },
   "author": "Freehaha",
   "repository": {
