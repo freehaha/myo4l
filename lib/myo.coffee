@@ -34,6 +34,7 @@ class Myo extends EventEmitter
     @emit 'rssi', rssi
 
   onDisconnect: =>
+    @emit 'disconnected'
     @connected = false
 
   disconnect: ->

@@ -44,17 +44,20 @@ commands = {
 sendEvent = (ws, type, data)->
   data.type = type
   data.timestamp = getTimestamp()
-  ws.send JSON.stringify [
-    'event'
-    data
-  ]
+  try
+    ws.send JSON.stringify [
+      'event'
+      data
+    ]
+  catch e
+    console.error e
+    ws.close()
 
 m.on 'connected', ->
   wss.on 'connection', (ws)->
     ws.on 'message', (message)->
       cmd = JSON.parse(message)
       if cmd[0] is 'command' and cmd[1].command of commands
-        console.log "command", cmd
         commands[cmd[1].command](ws, cmd[1])
     if m.connected
       sendEvent(ws, 'connected', {
@@ -120,13 +123,16 @@ m.on 'connected', ->
       m.poseStream.removeListener 'pose', sendPose
       m.poseStream.removeListener 'arm', sendArm
 
+m.on 'disconnected', ->
+  console.log 'disconnected, try to reconnect...'
+  m.connect()
+
 process.on 'SIGINT', ->
   wss.close()
   console.log 'shutting down..'
   if m.connected
     m.disconnect()
-  else
-    process.exit(0)
+  process.exit(0)
 
 server.listen 10138, ->
   console.log 'server on'

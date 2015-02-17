@@ -32,6 +32,8 @@ class Pose extends EventEmitter
     else if type == 5
       @_locked = true
       @emit 'locked'
+    else if type == 6
+      @emit 'unsynced'
     else
       @emit 'error', new Error('unknown classifier: ' + type)
 
