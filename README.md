@@ -11,8 +11,17 @@ A Websocket interface is also implemented trying to mimic the behavior of Myo Co
 First, because [noble](https://github.com/sandeepmistry/noble)  is used please look at it's build requirement.
 Mainly, you'll need to install `bluetooth, bluez-utils and libbluetooth-dev` packages in your system.
 
+I haven't publish this on npm yet so after making sure you have the necessary
+libraries and header files, just clone this project and install the modules:
+
+```sh
+git clone https://github.com/freehaha/myo4l.git
+cd myo4l
+npm install
+``` 
+
 Normally the scanning requires root privileges but you can grant the `hci-ble` binary with permission by using this command
-in your project root or in `node_modules/myo4l`:
+in the project root or in `node_modules`:
 
 `find -path '*noble*Release/hci-ble' -exec sudo setcap cap_net_raw+eip '{}' \;`
 
@@ -24,7 +33,7 @@ Otherwise you'll have to run your scripts as root all the time.
 to setup websocket interface, run the `ws.js` script with your myo device name as argument
 
 ```sh
-node ws.js Myo
+node ws.js <Myo name>
 ```
 
 the WS interface specification can be found on [Myo Developer Forum](https://developer.thalmic.com/forums/topic/534/?page=1).
