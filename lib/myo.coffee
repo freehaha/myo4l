@@ -103,7 +103,7 @@ class Myo extends EventEmitter
       if err
         cb err
         return
-      c.notify true
+      #c.notify true
       if stream
         c.on 'read', (data, notify)->
           return unless notify
