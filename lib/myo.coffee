@@ -10,11 +10,16 @@ EventEmitter = require('events').EventEmitter
 LOCKING_NONE = 0
 LOCKING_STANDARD = 1
 
+CONN_DISCONNECTED = 0
+CONN_CONNECTING = 1
+CONN_CONNECTED = 2
+
 class Myo extends EventEmitter
   constructor: (@devName)->
     super
+    @_inited = false
     @dev = null
-    @connected = false
+    @connection = CONN_DISCONNECTED
     @services = {}
     @chars = {}
     @fVersion = null
@@ -24,6 +29,7 @@ class Myo extends EventEmitter
     @imuMode = command.imu.ENABLE
     @cfyMode = command.classifier.ENABLE
     @emgMode = command.emg.DISABLE
+    noble.on 'discover', @onDiscover
 
   onConnect: =>
     # do a discovery first to cache possible service and chars
@@ -34,11 +40,11 @@ class Myo extends EventEmitter
     @emit 'rssi', rssi
 
   onDisconnect: =>
+    @connection = CONN_DISCONNECTED
     @emit 'disconnected'
-    @connected = false
 
   disconnect: ->
-    if @connected
+    if @connection isnt CONN_DISCONNECTED
       @dev.disconnect()
 
   _discovery: (cb)->
@@ -50,7 +56,6 @@ class Myo extends EventEmitter
           @chars[c._serviceUuid] = {}
         @chars[c._serviceUuid][c.uuid] = c
 
-      console.log "done discovery, found #{ss.length} services, #{cs.length} characteristics"
       process.nextTick ->
         cb(err)
   getChar: (suid, cuid, cb)->
@@ -192,7 +197,7 @@ class Myo extends EventEmitter
       else
         @emit 'set_stream_emg_ack', 'success'
 
-  readFrimwareVersion: ->
+  readFirmwareVersion: ->
     @getChar constants.CONTROL_SERVICE_UUID, constants.FIRMWARE_VERSION_CHAR_UUID, (err, c) =>
       c.read (err, version) =>
         maj = version.readUInt16LE(0)
@@ -202,7 +207,6 @@ class Myo extends EventEmitter
         fVersion = "#{maj}.#{min}.#{pat}"
         @version = [maj, min, pat, hrd]
         console.log "version: #{fVersion} hardware: #{hrd}"
-        @connected = true
         async.parallel [
           (cb) => @setNotification(constants.EMG_SERVICE_UUID, constants.EMG0_DATA_CHAR_UUID, true, false, @emgStream, cb)
           (cb) => @setNotification(constants.IMU_SERVICE_UUID, constants.IMU_DATA_CHAR_UUID, true, false, @imuStream, cb)
@@ -221,27 +225,40 @@ class Myo extends EventEmitter
             console.log "initialized"
             @vibrate('short')
             @emit 'connected'
+            @connection = CONN_CONNECTED
 
   readNecessaryInfo: ->
-    @readFrimwareVersion()
+    @readFirmwareVersion()
     #@setNotifications()
 
   initMyo: ->
     console.log 'found myo, connecting...'
-    @dev.on 'connect', @onConnect
-    @dev.on 'disconnect', @onDisconnect
-    @dev.on 'rssiUpdate', @onRssiUpdate
-    @dev.connect()
+    unless @_inited
+      @dev.on 'connect', @onConnect
+      @dev.on 'disconnect', @onDisconnect
+      @dev.on 'rssiUpdate', @onRssiUpdate
+      @_inited = true
+    @dev.connect (err)->
+      if err
+        console.error err
 
+
+  onDiscover: (peri)=>
+    if @connection isnt CONN_CONNECTING
+      noble.stopScanning()
+      return
+
+    return unless @connection is CONN_CONNECTING
+    len = peri.advertisement.localName.length
+    if peri.advertisement.localName.substring(0, len - 1) == @devName
+      @dev = peri
+      @initMyo()
+      noble.stopScanning()
+    return
 
   connect: ->
-    noble.on 'discover', (peri) =>
-      len = peri.advertisement.localName.length
-      if peri.advertisement.localName.substring(0, len - 1) == @devName
-        @dev = peri
-        @initMyo()
-        noble.stopScanning()
-      return
+    return unless @connection is CONN_DISCONNECTED
+    @connection = CONN_CONNECTING
     noble.startScanning()
 
 module.exports = Myo
