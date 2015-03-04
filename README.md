@@ -18,6 +18,7 @@ libraries and header files, just clone this project and install the modules:
 git clone https://github.com/freehaha/myo4l.git
 cd myo4l
 npm install
+npm run build # to generate the js files
 ``` 
 
 Normally the scanning requires root privileges but you can grant the `hci-ble` binary with permission by using this command
@@ -30,10 +31,13 @@ Otherwise you'll have to run your scripts as root all the time.
 # How to use
 
 ## Websocket Interface
-to setup websocket interface, run the `ws.js` script with your myo device name as argument
+to setup websocket interface, run the `ws.js` script with your myo device name as argument. It currently supporting only one device.
 
 ```sh
 node ws.js <Myo name>
+
+# for example
+node ws.js Myo1
 ```
 
 the WS interface specification can be found on [Myo Developer Forum](https://developer.thalmic.com/forums/topic/534/?page=1).
