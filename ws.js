@@ -79,7 +79,7 @@
 
   m.on('connected', function() {
     return wss.on('connection', function(ws) {
-      var sendArm, sendEmg, sendImu, sendPose;
+      var sendArm, sendEmg, sendImu, sendPose, sendRssi;
       ws.on('message', function(message) {
         var cmd;
         cmd = JSON.parse(message);
@@ -87,7 +87,7 @@
           return commands[cmd[1].command](ws, cmd[1]);
         }
       });
-      if (m.connected) {
+      if (m.connection === Myo.CONN_CONNECTED) {
         sendEvent(ws, 'connected', {
           myo: 0,
           version: m.version
@@ -136,11 +136,19 @@
           emg: emg
         });
       };
+      sendRssi = function(rssi) {
+        return sendEvent(ws, 'rssi', {
+          myo: 0,
+          rssi: rssi
+        });
+      };
+      m.on('rssi', sendRssi);
       m.poseStream.addListener('pose', sendPose);
       m.poseStream.addListener('arm', sendArm);
       m.imuStream.addListener('data', sendImu);
       m.emgStream.addListener('data', sendEmg);
       return ws.on('close', function() {
+        m.removeListener('rssi', sendRssi);
         m.emgStream.removeListener('data', sendEmg);
         m.imuStream.removeListener('data', sendImu);
         m.poseStream.removeListener('pose', sendPose);

@@ -59,7 +59,7 @@ m.on 'connected', ->
       cmd = JSON.parse(message)
       if cmd[0] is 'command' and cmd[1].command of commands
         commands[cmd[1].command](ws, cmd[1])
-    if m.connected
+    if m.connection == Myo.CONN_CONNECTED
       sendEvent(ws, 'connected', {
         myo: 0
         version: m.version
@@ -110,14 +110,21 @@ m.on 'connected', ->
         myo: 0
         emg: emg
       }
+    sendRssi = (rssi)->
+      sendEvent ws, 'rssi', {
+        myo: 0
+        rssi: rssi
+      }
 
     # set reporters
+    m.on 'rssi', sendRssi
     m.poseStream.addListener 'pose', sendPose
     m.poseStream.addListener 'arm', sendArm
     m.imuStream.addListener 'data', sendImu
     m.emgStream.addListener 'data', sendEmg
     ws.on 'close', ->
       # cleanup
+      m.removeListener 'rssi', sendRssi
       m.emgStream.removeListener 'data', sendEmg
       m.imuStream.removeListener 'data', sendImu
       m.poseStream.removeListener 'pose', sendPose

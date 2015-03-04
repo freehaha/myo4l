@@ -261,4 +261,7 @@ class Myo extends EventEmitter
     @connection = CONN_CONNECTING
     noble.startScanning()
 
+Myo.CONN_DISCONNECTED = CONN_DISCONNECTED
+Myo.CONN_CONNECTING = CONN_CONNECTING
+Myo.CONN_CONNECTED = CONN_CONNECTED
 module.exports = Myo
