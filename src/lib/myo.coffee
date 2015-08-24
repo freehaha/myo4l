@@ -259,7 +259,8 @@ class Myo extends EventEmitter
   connect: ->
     return unless @connection is CONN_DISCONNECTED
     @connection = CONN_CONNECTING
-    noble.startScanning()
+    noble.on 'stateChange', (state)->
+      noble.startScanning()
 
 Myo.CONN_DISCONNECTED = CONN_DISCONNECTED
 Myo.CONN_CONNECTING = CONN_CONNECTING
