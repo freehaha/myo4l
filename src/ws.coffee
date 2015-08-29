@@ -55,6 +55,11 @@ sendEvent = (ws, type, data)->
 
 m.on 'connected', ->
   wss.on 'connection', (ws)->
+    sendEvent(ws, 'paired', {
+      macAddress: 'addr...'
+      name: 'Name'
+      myo: 0
+    })
     ws.on 'message', (message)->
       cmd = JSON.parse(message)
       if cmd[0] is 'command' and cmd[1].command of commands
